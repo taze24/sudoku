@@ -1,5 +1,8 @@
 const table = document.getElementById("table")
 
+// Make the generate game logic
+// document.getElementById('inputElementId').readOnly = true;
+
 for (let i = 0; i < 9; i++) {
     let row = document.createElement("tr");
     for (let j = 0; j < 9; j++) {
@@ -26,10 +29,13 @@ for (let i = 2; i < table.rows.length; i += 3) {
 
 //  ======= LOGIC OF GAME BEGINS HERE =======
 
-const inputs = document.querySelectorAll('input'); // Select all input elements
+let generatingGame = false; // A flag to indicate if we're generating the initial game
+
+// Logic of the game remains mostly the same with minor changes:
+const inputs = document.querySelectorAll('input');
 
 inputs.forEach(input => {
-    input.addEventListener('input', function () {
+    input.addEventListener('input', function inputChecking() {
         // Remove non-numeric characters
         this.value = this.value.replace(/[^0-9]/g, '');
 
@@ -38,58 +44,89 @@ inputs.forEach(input => {
             this.value = this.value.slice(0, 1);
         }
 
-        // Get the table cell (td) that contains the input
         const cell = this.closest('td');
-        // Get the row (tr) that contains the cell
         const row = cell.parentElement;
-        // Get the row index (i)
         const i = row.rowIndex;
-        // Get the column index (j)
         const j = Array.from(row.children).indexOf(cell);
 
         let column = [];
         for (let k = 0; k < 9; k++) {
-            //k = rows, j = columns and the first child is the input element.
             column.push(table.children[k].children[j].firstChild)
         }
 
-        // array of inputs in the row (horizontal inputs)
         const inputsInRow = Array.from(row.querySelectorAll('input'));
-        // Merging the inputsInRow with inputsInCol to make a cross and check them at one time
         const inputsInLine = [...inputsInRow, ...column];
 
-        // Getting the position of the square(i,j) 
         let squareRow = Math.floor(i / 3);
         let squareCol = Math.floor(j / 3);
-        // Getting all the rows in the square
-        // e.g SQUARE = 0 -> rowsIndexes[0,1,2] etc.
         let rowsIndex = 3 * squareRow;
         let colsIndex = 3 * squareCol;
 
-        // Making an array of inputs that belong in the square as the input
         let squareCells = [];
         for (n = rowsIndex; n < rowsIndex + 3; n++) {
             for (m = colsIndex; m < colsIndex + 3; m++) {
-                squareCells.push(table.children[n].children[m].firstChild)
+                squareCells.push(table.children[n].children[m].firstChild);
             }
         }
 
-        // Checking if input is already in the same square 
+        // Check for conflicts in the square
+        let hasConflict = false;
         squareCells.forEach(cell => {
             if (cell !== this && cell.value === this.value && this.value !== "") {
-                alert("ERROR: There is already number " + this.value + " in this square.");
+                if (!generatingGame) {
+                    alert("ERROR: There is already number " + this.value + " in this square.");
+                }
                 this.value = "";
-                return;
+                hasConflict = true;
             }
-        })
-        // Checking if input is already entered in horizontal or vertical line
-        inputsInLine.forEach(inputInLine => {
-            if (inputInLine !== this && inputInLine.value === this.value && this.value !== "") {
-                alert("ERROR: Invalid move. Number " + this.value + " is already in line.")
-                this.value = "";
-                return;
-            }
-        })
+        });
 
+        // Check for conflicts in the row or column
+        if (!hasConflict) {
+            inputsInLine.forEach(inputInLine => {
+                if (inputInLine !== this && inputInLine.value === this.value && this.value !== "") {
+                    if (!generatingGame) {
+                        alert("ERROR: Invalid move. Number " + this.value + " is already in line.");
+                    }
+                    this.value = "";
+                    hasConflict = true;
+                }
+            });
+        }
     });
 });
+
+// Create game function to generate random numbers
+function createGame() {
+    generatingGame = true; // Set flag to indicate we're generating the game
+    let filledCells = 0;
+
+    while (filledCells < 20) {
+        let randomRow = Math.floor(Math.random() * 9);
+        let randomCol = Math.floor(Math.random() * 9);
+
+        let randomCell = table.rows[randomRow].cells[randomCol].querySelector('input');
+
+        if (randomCell.value !== "") {
+            continue;
+        }
+
+        let randomNumber = Math.floor(Math.random() * 9) + 1;
+
+        randomCell.value = randomNumber;
+
+        const event = new Event('input', {
+            bubbles: true,
+            cancelable: true,
+        });
+        randomCell.dispatchEvent(event);
+
+        if (randomCell.value === "") {
+            continue;
+        }
+
+        filledCells++;
+    }
+    generatingGame = false; // Unset the flag after game generation
+}
+
